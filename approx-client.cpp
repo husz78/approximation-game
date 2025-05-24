@@ -4,6 +4,8 @@
 #include <string>
 #include <cerrno>
 #include <netdb.h>
+#include <signal.h>
+#include <poll.h>
 
 #include "err.h"
 #include "common.h"
@@ -103,10 +105,40 @@ int main(int argc, char* argv[]) {
     if (connect(sock_fd, ai->ai_addr, (socklen_t)ai->ai_addrlen) == -1) {
         syserr("connect()");
     }
-    freeaddrinfo(result);
-
+    signal(SIGPIPE, SIG_IGN);
 
     close(sock_fd);
     
     return 0;
+}
+
+void auto_play(int fd) {
+    return;
+}
+
+void input_play(int fd) {
+    struct pollfd poll_fds[2];
+
+    poll_fds[0].fd = STDIN_FILENO;
+    poll_fds[0].events = POLLIN;
+    
+    poll_fds[1].fd = fd;
+    poll_fds[1].events = POLLIN;
+
+    
+    while (true) {
+        for (int i = 0; i < 2; i++) poll_fds[i].revents = 0;
+
+        int result = poll(poll_fds, 2, -1);
+        if (result < 0) {
+            syserr("poll()");
+        }
+        else if (result > 0) {
+            if (poll_fds[0].revents & POLLIN) {
+                int point;
+                double value;
+                get_input_from_stdin(point, value);
+            }
+        }
+    }
 }

@@ -6,4 +6,15 @@
 // Validates player_id - checks if it contains only digits and English letters.
 bool is_valid_player_id(const std::string& player_id);
 
+// Sends HELLO message to the tcp connection represented by descriptor fd.
+// Returns 0 on success and -1 on error.
+int send_HELLO(const std::string& player_id, int fd);
+
+// Sends PUT message to the tcp connection represented by descriptor fd.
+// Prints the error and exits on error.
+void send_PUT(int point, double value, int fd);
+
+// Gets the point and value from STDIN. Prints error when wrong line format.
+bool get_input_from_stdin(int& point, double& value);
+
 #endif
