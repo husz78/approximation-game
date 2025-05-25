@@ -2,6 +2,7 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <unistd.h>
+#include <string>
 
 #include "server-utils.h"
 #include "err.h"

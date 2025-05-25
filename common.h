@@ -4,6 +4,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <sys/types.h>
+#include <string>
 
 uint16_t read_port(char const *string);
 struct sockaddr_in get_server_address(char const *host, uint16_t port);
@@ -19,5 +20,8 @@ ssize_t	writen(int fd, const void *vptr, size_t n);
 // If s is not an integer or is an integer that doesn't 
 // satisfy minv <= s <= min then returns false.
 bool parse_int(const char *s, int minv, int maxv, int &out);
+
+// Convert sockaddr to human-readable IP string; prefer IPv4 if v4-mapped.
+std::string sockaddr_to_ip(const struct sockaddr* sa);
 
 #endif

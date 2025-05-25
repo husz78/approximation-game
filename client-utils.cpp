@@ -1,10 +1,16 @@
 #include <sstream>
 #include <iomanip>
 #include <iostream>
+#include <cstring>
+#include <unistd.h>
 
 #include "client-utils.h"
 #include "common.h"
 #include "err.h"
+
+static constexpr size_t BUF_SIZE = 65536;
+static char buf[BUF_SIZE];
+static size_t buf_start = 0, buf_end = 0;
 
 
 bool is_valid_player_id(const std::string& player_id) {
@@ -37,7 +43,7 @@ void send_PUT(int point, double value, int fd) {
     if (writen(fd, message.c_str(), message.size()) != (ssize_t)message.size()) {
         syserr("write()");
     }
-
+    std::cout << "Putting " << value << " in " << point << ".\n";
 }
 
 bool get_input_from_stdin(int& point, double& value) {
@@ -55,4 +61,37 @@ bool get_input_from_stdin(int& point, double& value) {
         return false;
     }
     return true;
+}
+
+std::string receive_msg(int fd) {
+    while (true) {
+        for (size_t i = buf_start; i + 1 < buf_end; ++i) {
+            if (buf[i] == '\r' && buf[i+1] == '\n') {
+                std::string line(buf + buf_start, i - buf_start);
+                size_t new_start = i + 2;
+                size_t rem = buf_end - new_start;
+                if (rem > 0) {
+                    memmove(buf, buf + new_start, rem);
+                }
+                buf_start = 0;
+                buf_end = rem;
+                return line;
+            }
+        }
+
+        if (buf_end == BUF_SIZE) {
+            syserr("receive_msg: buffer overflow");
+        }
+        ssize_t n = read(fd, buf + buf_end, BUF_SIZE - buf_end);
+        if (n < 0) {
+            if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                return "";
+            }
+            syserr("read()");
+        }
+        if (n == 0) {
+            return "";
+        }
+        buf_end += (size_t)n;
+    }
 }

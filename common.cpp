@@ -5,11 +5,11 @@
 #include <limits.h>
 #include <netdb.h>
 #include <stddef.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <signal.h>
+#include <arpa/inet.h>
 
 #include "err.h"
 #include "common.h"
@@ -40,7 +40,7 @@ struct sockaddr_in get_server_address(char const *host, uint16_t port) {
     struct sockaddr_in send_address;
     send_address.sin_family = AF_INET;   // IPv4
     send_address.sin_addr.s_addr =       // IP address
-            ((struct sockaddr_in *) (address_result->ai_addr))->sin_addr.s_addr;
+        ((struct sockaddr_in *) (address_result->ai_addr))->sin_addr.s_addr;
     send_address.sin_port = htons(port); // port from the command line
 
     freeaddrinfo(address_result);
@@ -93,4 +93,28 @@ bool parse_int(const char *s, int minv, int maxv, int &out) {
     if (val < minv || val > maxv) return false;
     out = (int)val;
     return true;
+}
+
+std::string sockaddr_to_ip(const struct sockaddr* sa) {
+    char buf[INET6_ADDRSTRLEN];
+    if (sa->sa_family == AF_INET) {
+        auto* sin = (const struct sockaddr_in*)sa;
+        inet_ntop(AF_INET, &sin->sin_addr, buf, sizeof buf);
+        return buf;
+    } else if (sa->sa_family == AF_INET6) {
+        auto* sin6 = (const struct sockaddr_in6*)sa;
+        const uint8_t* a = sin6->sin6_addr.s6_addr;
+        bool v4 = true;
+        for (int i = 0; i < 10; ++i)
+            if (a[i] != 0) { v4 = false; break; }
+        if (v4 && a[10] == 0xff && a[11] == 0xff) {
+            struct in_addr ipv4;
+            memcpy(&ipv4, a + 12, sizeof ipv4);
+            inet_ntop(AF_INET, &ipv4, buf, sizeof buf);
+            return buf;
+        }
+        inet_ntop(AF_INET6, &sin6->sin6_addr, buf, sizeof buf);
+        return buf;
+    }
+    return {};
 }

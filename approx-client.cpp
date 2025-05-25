@@ -105,6 +105,8 @@ int main(int argc, char* argv[]) {
     if (connect(sock_fd, ai->ai_addr, (socklen_t)ai->ai_addrlen) == -1) {
         syserr("connect()");
     }
+    std::cout << "Connected to [" << sockaddr_to_ip(ai->ai_addr) << "]:" << 
+                ((struct sockaddr_in*)ai->ai_addr)->sin_port << ".\n";
     signal(SIGPIPE, SIG_IGN);
 
     close(sock_fd);
@@ -138,6 +140,11 @@ void input_play(int fd) {
                 int point;
                 double value;
                 get_input_from_stdin(point, value);
+            }
+            if (poll_fds[1].revents & POLLIN) {
+                std::string msg = receive_msg(fd);
+                if (msg.empty()) continue;
+                
             }
         }
     }

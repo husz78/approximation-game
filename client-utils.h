@@ -17,4 +17,10 @@ void send_PUT(int point, double value, int fd);
 // Gets the point and value from STDIN. Prints error when wrong line format.
 bool get_input_from_stdin(int& point, double& value);
 
+// Reads a message from the socket represented by fd descriptor.
+// Returns either the whole message or empty string if didn't read
+// whole message. It may be called multiple times until it returns
+// non-empty string because it buffers the message.
+std::string receive_msg(int fd);
+
 #endif
