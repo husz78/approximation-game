@@ -206,7 +206,27 @@ bool handle_scoring_message(std::istringstream& iss) {
     return true;
 }
 
-bool handle_state_message(std::istringstream& iss, std::vector<double>& coeffs, bool auto_mode,
+bool handle_state_message(std::istringstream& iss, const std::vector<double>& coeffs, bool auto_mode,
                     std::vector<double>& state_vector, int fd) {
+    int k = state_vector.size();
+    std::vector<double> tmp_state;
+    bool known_size = k == 0 ? false : true;
+    int counter = 0;
+    std::string r_str;
+    double r;
+    std::string message = "Received state";
+    while (!iss.eof()) {
+        if (!(iss >> r_str)) return false;
+        counter++;
+        if (!is_valid_decimal(r_str)) return false;
+        message += " " + r_str;
+        r = std::stod(r_str);
+        tmp_state.push_back(r);
+    }
+    if (known_size && tmp_state.size() != k) return false;
+    for (int i = 0; i < k; i++) state_vector[i] = tmp_state[i];
+    std::cout << message << ".\n";
+    
+    // TODO Compute the best put if auto_mode and send it.
     return true;
 }
