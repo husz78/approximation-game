@@ -118,3 +118,37 @@ std::string sockaddr_to_ip(const struct sockaddr* sa) {
     }
     return {};
 }
+
+
+bool is_valid_decimal(const std::string& str) {
+    if (str.empty()) return false;
+    
+    size_t pos = 0;
+    
+    if (str[pos] == '-') {
+        pos++;
+        if (pos >= str.length()) return false; 
+    }
+    
+    bool has_digits_before = false;
+    while (pos < str.length() && std::isdigit(str[pos])) {
+        has_digits_before = true;
+        pos++;
+    }
+    
+    if (!has_digits_before) return false; 
+    
+    if (pos < str.length() && str[pos] == '.') {
+        pos++;
+        
+        size_t decimal_digits = 0;
+        while (pos < str.length() && std::isdigit(str[pos])) {
+            decimal_digits++;
+            pos++;
+        }
+        
+        if (decimal_digits > 7) return false;
+    }
+    
+    return pos == str.length();
+}

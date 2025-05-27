@@ -2,6 +2,7 @@
 #define CLIENT_UTILS_H
 
 #include <string>
+#include <vector>
 
 // Validates player_id - checks if it contains only digits and English letters.
 bool is_valid_player_id(const std::string& player_id);
@@ -22,5 +23,11 @@ bool get_input_from_stdin(int& point, double& value);
 // whole message. It may be called multiple times until it returns
 // non-empty string because it buffers the message.
 std::string receive_msg(int fd);
+
+// Parses the message and then based on the type handles the message 
+// (displays necessary diagnostic output, sends a response etc.).
+// Returns true if success and false if wrong message.
+bool handle_message(const std::string& msg, std::vector<double>& coeffs, bool auto_mode,
+                    std::vector<double>& state_vector);
 
 #endif

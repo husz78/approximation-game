@@ -32,6 +32,7 @@ int send_HELLO(const std::string& player_id, int fd) {
         syserr("write()");
         return -1;
     }
+    std::cout << "Sending HELLO.\n";
     return 0;
 }
 
@@ -94,4 +95,118 @@ std::string receive_msg(int fd) {
         }
         buf_end += (size_t)n;
     }
+}
+
+bool handle_message(const std::string& msg, std::vector<double>& coeffs, bool auto_mode,
+                    std::vector<double>& state_vector, int fd,
+                    std::vector<std::pair<int, double>>& pending_puts) {
+        std::istringstream iss(msg);
+        std::string command;
+        if (!(iss >> command))
+            return false;
+        
+        if (command == "COEFF") {
+            // return handle_coeff_message();
+        }
+        else if (command == "STATE") {
+            // return handle_state_message();
+        }
+        else if (command == "SCORING") {
+            // return handle_scoring_message();
+        }
+        else if (command == "BAD_PUT") {
+            // return handle_bad_put_message();
+        }
+        else if (command == "PENALTY") {
+            // return handle_penalty_message();
+        }
+        else return false;
+}
+
+bool handle_penalty_message(std::istringstream& iss) {
+    int point;
+    std::string value_str;
+    double value;
+    if (!(iss >> point >> value_str) || !iss.eof()) return false;
+    if (!is_valid_decimal(value_str)) return false;
+
+    value = std::stod(value_str);
+    std::cout << "Received penalty for point " << point << " with value " << value << ".\n";
+    return true;
+}
+
+bool handle_bad_put_message(std::istringstream& iss) {
+    int point;
+    std::string value_str;
+    double value;
+    if (!(iss >> point >> value_str) || !iss.eof()) return false;
+    if (!is_valid_decimal(value_str)) return false;
+    
+    value = std::stod(value_str);
+    std::cout << "Received penalty for point " << point << " with value " << value << ".\n";
+    return true;
+}
+
+bool handle_coeff_message(std::istringstream& iss, std::vector<double>& coeffs, bool auto_mode,
+                    const std::vector<double>& state_vector, int fd,
+                    std::vector<std::pair<int, double>>& pending_puts) {
+    if (!(state_vector.empty() || coeffs.empty())) {
+        return false;
+    }
+    std::string coeff_str;
+    double coeff;
+    bool ok = true;
+    while (!iss.eof()) {
+        if (!(iss >> coeff_str)) {
+            ok = false;
+            break;
+        }
+        if (!is_valid_decimal(coeff_str)) {
+            ok = false;
+            break;
+        }
+        coeff = std::stod(coeff_str);
+        if (abs(coeff) > 100) {
+            ok = false;
+            break;
+        }
+        coeffs.push_back(coeff);
+    }
+    if (ok == false || coeffs.size() > 9 || coeffs.size() < 2) {
+        coeffs.clear();
+        return false;
+    }
+    std::cout << "Received coefficients";
+    for (double n : coeffs) {
+        std::cout << " " << n;
+    }
+    std::cout << ".\n";
+    if (auto_mode) {
+        // send_best_PUT();
+    }
+    else {
+        for (auto put : pending_puts) {
+            send_PUT(put.first, put.second, fd);
+        }
+    }
+    pending_puts.clear();
+    return true;
+}
+
+bool handle_scoring_message(std::istringstream& iss) {
+    std::string message = "Game end, scoring:";
+    std::string player;
+    std::string score_str;
+    while (!iss.eof()) {
+        if (!(iss >> player >> score_str)) return false;
+        if (!is_valid_decimal(score_str)) return false;
+        message += " " + player + " " + score_str;
+    }
+    std::cout << message << ".\n";
+    return true;
+}
+
+bool handle_state_message(std::istringstream& iss, std::vector<double>& coeffs, bool auto_mode,
+                    std::vector<double>& state_vector, int fd) {
+    return true;
 }

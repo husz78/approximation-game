@@ -24,4 +24,7 @@ bool parse_int(const char *s, int minv, int maxv, int &out);
 // Convert sockaddr to human-readable IP string; prefer IPv4 if v4-mapped.
 std::string sockaddr_to_ip(const struct sockaddr* sa);
 
+// Checks if the given string represents a valid decimal number.
+bool is_valid_decimal(const std::string& str);
+
 #endif

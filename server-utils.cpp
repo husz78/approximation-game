@@ -7,31 +7,6 @@
 #include "server-utils.h"
 #include "err.h"
 
-
-std::string sockaddr_to_ip(const struct sockaddr* sa) {
-    char buf[INET6_ADDRSTRLEN];
-    if (sa->sa_family == AF_INET) {
-        auto* sin = (const struct sockaddr_in*)sa;
-        inet_ntop(AF_INET, &sin->sin_addr, buf, sizeof buf);
-        return buf;
-    } else if (sa->sa_family == AF_INET6) {
-        auto* sin6 = (const struct sockaddr_in6*)sa;
-        const uint8_t* a = sin6->sin6_addr.s6_addr;
-        bool v4 = true;
-        for (int i = 0; i < 10; ++i)
-            if (a[i] != 0) { v4 = false; break; }
-        if (v4 && a[10] == 0xff && a[11] == 0xff) {
-            struct in_addr ipv4;
-            std::memcpy(&ipv4, a + 12, sizeof ipv4);
-            inet_ntop(AF_INET, &ipv4, buf, sizeof buf);
-            return buf;
-        }
-        inet_ntop(AF_INET6, &sin6->sin6_addr, buf, sizeof buf);
-        return buf;
-    }
-    return {};
-}
-
 int create_dual_stack(int port) {
     std::string port_s = std::to_string(port);
     struct addrinfo hints{}, *res;

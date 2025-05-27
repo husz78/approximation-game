@@ -6,6 +6,7 @@
 #include <netdb.h>
 #include <signal.h>
 #include <poll.h>
+#include <vector>
 
 #include "err.h"
 #include "common.h"
@@ -70,6 +71,8 @@ int main(int argc, char* argv[]) {
     bool force4     = false;
     bool force6     = false;
     bool auto_mode  = false;
+    std::vector <double> coeffs;
+    std::vector <double> state_vector;
 
     parse_args(argc, argv, player_id, server, port, force4, force6, auto_mode);
 
