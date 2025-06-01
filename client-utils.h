@@ -4,8 +4,6 @@
 #include <string>
 #include <vector>
 
-// Validates player_id - checks if it contains only digits and English letters.
-bool is_valid_player_id(const std::string& player_id);
 
 // Sends HELLO message to the tcp connection represented by descriptor fd.
 // Returns 0 on success and -1 on error.
@@ -27,7 +25,8 @@ std::string receive_msg(int fd);
 // Parses the message and then based on the type handles the message 
 // (displays necessary diagnostic output, sends a response etc.).
 // Returns true if success and false if wrong message.
-bool handle_message(const std::string& msg, std::vector<double>& coeffs, bool auto_mode,
-                    std::vector<double>& state_vector);
+bool handle_message(const std::string& msg, std::vector<double>& coeffs,
+                    bool auto_mode, std::vector<double>& state_vector, int fd,
+                    std::vector<std::pair<int, double>>& pending_puts, bool& exit);
 
 #endif

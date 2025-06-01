@@ -27,4 +27,7 @@ std::string sockaddr_to_ip(const struct sockaddr* sa);
 // Checks if the given string represents a valid decimal number.
 bool is_valid_decimal(const std::string& str);
 
+// Validates player_id - checks if it contains only digits and English letters.
+bool is_valid_player_id(const std::string& player_id);
+
 #endif

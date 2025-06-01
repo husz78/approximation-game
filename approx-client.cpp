@@ -73,6 +73,7 @@ int main(int argc, char* argv[]) {
     bool auto_mode  = false;
     std::vector <double> coeffs;
     std::vector <double> state_vector;
+    std::string player_id;
 
     parse_args(argc, argv, player_id, server, port, force4, force6, auto_mode);
 
@@ -113,15 +114,45 @@ int main(int argc, char* argv[]) {
     signal(SIGPIPE, SIG_IGN);
 
     close(sock_fd);
+    freeaddrinfo(result);
     
     return 0;
 }
 
-void auto_play(int fd) {
-    return;
+void auto_play(int fd, std::vector <double>& coeffs,
+                std::vector <double>& state_vector, struct addrinfo* ai,
+                std::string& player_id) 
+{
+    struct pollfd poll_fd;
+    poll_fd.fd = fd;
+    poll_fd.events = POLLIN;
+    bool exit = false;
+    std::vector<std::pair<int, double>> pending_puts;
+
+    while (!exit) {
+        poll_fd.revents = 0;
+        int result = poll(&poll_fd, 1, -1);
+        if (result < 0) {
+            syserr("poll()");
+        }
+        else if (result > 0) {
+            if (poll_fd.revents & POLLIN) {
+                std::string msg = receive_msg(fd);
+                if (msg.empty()) continue;
+                if (!handle_message(msg, coeffs, true, state_vector, fd,
+                                    pending_puts, exit)) {
+                    fatal("bad message from [%s]:%d, %s: %s", sockaddr_to_ip(ai->ai_addr),
+                           ((struct sockaddr_in*)ai->ai_addr)->sin_port, player_id.c_str(),
+                            msg.c_str());
+                }
+            }
+        }
+    }
 }
 
-void input_play(int fd) {
+void input_play(int fd, std::vector <double>& coeffs,
+                std::vector <double>& state_vector, struct addrinfo* ai,
+                std::string& player_id) {
     struct pollfd poll_fds[2];
 
     poll_fds[0].fd = STDIN_FILENO;
@@ -129,9 +160,9 @@ void input_play(int fd) {
     
     poll_fds[1].fd = fd;
     poll_fds[1].events = POLLIN;
-
-    
-    while (true) {
+    std::vector<std::pair<int, double>> pending_puts;
+    bool exit = false;
+    while (!exit) {
         for (int i = 0; i < 2; i++) poll_fds[i].revents = 0;
 
         int result = poll(poll_fds, 2, -1);
@@ -142,12 +173,24 @@ void input_play(int fd) {
             if (poll_fds[0].revents & POLLIN) {
                 int point;
                 double value;
-                get_input_from_stdin(point, value);
+                if (get_input_from_stdin(point, value)) {
+                    if (coeffs.empty()) {
+                        pending_puts.push_back(std::make_pair(point, value));
+                    }
+                    else {
+                        send_PUT(point, value, fd);
+                    }
+                }
             }
             if (poll_fds[1].revents & POLLIN) {
                 std::string msg = receive_msg(fd);
                 if (msg.empty()) continue;
-                
+                if (!handle_message(msg, coeffs, false, state_vector, fd,
+                                    pending_puts, exit)) {
+                    fatal("bad message from [%s]:%d, %s: %s", sockaddr_to_ip(ai->ai_addr),
+                           ((struct sockaddr_in*)ai->ai_addr)->sin_port, player_id.c_str(),
+                            msg.c_str());
+                }
             }
         }
     }

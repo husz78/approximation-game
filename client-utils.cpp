@@ -13,19 +13,6 @@ static char buf[BUF_SIZE];
 static size_t buf_start = 0, buf_end = 0;
 
 
-bool is_valid_player_id(const std::string& player_id) {
-    if (player_id.empty()) return false;
-    
-    for (char c : player_id) {
-        if (!((c >= '0' && c <= '9') || 
-              (c >= 'a' && c <= 'z') ||  
-              (c >= 'A' && c <= 'Z'))) { 
-            return false;
-        }
-    }
-    return true;
-}
-
 int send_HELLO(const std::string& player_id, int fd) {
     std::string message = "HELLO " + player_id + "\r\n";
     if (writen(fd, message.c_str(), message.size()) <= 0) {
@@ -93,7 +80,7 @@ std::string receive_msg(int fd) {
             syserr("read()");
         }
         if (n == 0) {
-            return "";
+            fatal("unexpectd server disconnect");
         }
         buf_end += (size_t)n;
     }
