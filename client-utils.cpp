@@ -38,10 +38,12 @@ int send_HELLO(const std::string& player_id, int fd) {
 
 void send_PUT(int point, double value, int fd) {
     std::ostringstream oss;
-    oss << "PUT " << point << " " << std::fixed << std::setprecision(7) << value << "\r\n";
+    oss << "PUT " << point << " " << std::fixed << std::setprecision(7) <<
+                     value << "\r\n";
     std::string message = oss.str();
     
-    if (writen(fd, message.c_str(), message.size()) != (ssize_t)message.size()) {
+    if (writen(fd, message.c_str(), message.size()) != (ssize_t)message.size())
+    {
         syserr("write()");
     }
     std::cout << "Putting " << value << " in " << point << ".\n";
@@ -81,7 +83,7 @@ std::string receive_msg(int fd) {
         }
 
         if (buf_end == BUF_SIZE) {
-            syserr("receive_msg: buffer overflow");
+            syserr("read(): buffer overflow");
         }
         ssize_t n = read(fd, buf + buf_end, BUF_SIZE - buf_end);
         if (n < 0) {
@@ -97,28 +99,33 @@ std::string receive_msg(int fd) {
     }
 }
 
-bool handle_message(const std::string& msg, std::vector<double>& coeffs, bool auto_mode,
+bool handle_message(const std::string& msg, std::vector<double>& coeffs, 
+                    bool auto_mode,
                     std::vector<double>& state_vector, int fd,
-                    std::vector<std::pair<int, double>>& pending_puts) {
+                    std::vector<std::pair<int, double>>& pending_puts,
+                    bool& exit) {
         std::istringstream iss(msg);
         std::string command;
         if (!(iss >> command))
             return false;
         
         if (command == "COEFF") {
-            // return handle_coeff_message();
-        }
+            return handle_coeff_message(iss, coeffs, auto_mode, state_vector,
+                                        fd, pending_puts);
+        }   
         else if (command == "STATE") {
-            // return handle_state_message();
+            return handle_state_message(iss, coeffs, auto_mode,
+                                        state_vector, fd);
         }
         else if (command == "SCORING") {
-            // return handle_scoring_message();
+            return handle_scoring_message(iss, exit);
         }
         else if (command == "BAD_PUT") {
-            // return handle_bad_put_message();
+            return handle_bad_put_message(iss, fd, auto_mode, state_vector,
+                                            coeffs);
         }
         else if (command == "PENALTY") {
-            // return handle_penalty_message();
+            return handle_penalty_message(iss);
         }
         else return false;
 }
@@ -131,11 +138,14 @@ bool handle_penalty_message(std::istringstream& iss) {
     if (!is_valid_decimal(value_str)) return false;
 
     value = std::stod(value_str);
-    std::cout << "Received penalty for point " << point << " with value " << value << ".\n";
+    std::cout << "Received penalty for point " << point << " with value " <<
+                 value << ".\n";
     return true;
 }
 
-bool handle_bad_put_message(std::istringstream& iss) {
+bool handle_bad_put_message(std::istringstream& iss, int fd, bool auto_mode,
+                            const std::vector<double>& state_vector,
+                            const std::vector<double>& coeffs) {
     int point;
     std::string value_str;
     double value;
@@ -143,13 +153,16 @@ bool handle_bad_put_message(std::istringstream& iss) {
     if (!is_valid_decimal(value_str)) return false;
     
     value = std::stod(value_str);
-    std::cout << "Received penalty for point " << point << " with value " << value << ".\n";
+    std::cout << "Received penalty for point " << point << " with value " <<
+                 value << ".\n";
+    if (auto_mode) send_best_PUT(fd, state_vector, coeffs);
     return true;
 }
 
-bool handle_coeff_message(std::istringstream& iss, std::vector<double>& coeffs, bool auto_mode,
-                    const std::vector<double>& state_vector, int fd,
-                    std::vector<std::pair<int, double>>& pending_puts) {
+bool handle_coeff_message(std::istringstream& iss, std::vector<double>& coeffs,
+                        bool auto_mode, 
+                        const std::vector<double>& state_vector, int fd,
+                        std::vector<std::pair<int, double>>& pending_puts) {
     if (!(state_vector.empty() || coeffs.empty())) {
         return false;
     }
@@ -182,7 +195,7 @@ bool handle_coeff_message(std::istringstream& iss, std::vector<double>& coeffs, 
     }
     std::cout << ".\n";
     if (auto_mode) {
-        // send_best_PUT();
+        send_PUT(0, 0, fd);
     }
     else {
         for (auto put : pending_puts) {
@@ -193,7 +206,7 @@ bool handle_coeff_message(std::istringstream& iss, std::vector<double>& coeffs, 
     return true;
 }
 
-bool handle_scoring_message(std::istringstream& iss) {
+bool handle_scoring_message(std::istringstream& iss, bool& exit) {
     std::string message = "Game end, scoring:";
     std::string player;
     std::string score_str;
@@ -203,11 +216,14 @@ bool handle_scoring_message(std::istringstream& iss) {
         message += " " + player + " " + score_str;
     }
     std::cout << message << ".\n";
+    exit = true;
     return true;
 }
 
-bool handle_state_message(std::istringstream& iss, const std::vector<double>& coeffs, bool auto_mode,
-                    std::vector<double>& state_vector, int fd) {
+bool handle_state_message(std::istringstream& iss,
+                        const std::vector<double>& coeffs,
+                        bool auto_mode, 
+                        std::vector<double>& state_vector, int fd) {
     int k = state_vector.size();
     std::vector<double> tmp_state;
     bool known_size = k == 0 ? false : true;
@@ -224,9 +240,45 @@ bool handle_state_message(std::istringstream& iss, const std::vector<double>& co
         tmp_state.push_back(r);
     }
     if (known_size && tmp_state.size() != k) return false;
-    for (int i = 0; i < k; i++) state_vector[i] = tmp_state[i];
+    if (known_size) 
+        for (int i = 0; i < k; i++) state_vector[i] = tmp_state[i];
+    else
+        for (double point : tmp_state) state_vector.push_back(point);
     std::cout << message << ".\n";
     
-    // TODO Compute the best put if auto_mode and send it.
+    if (auto_mode)
+        send_best_PUT(fd, state_vector, coeffs);
     return true;
+}
+
+void send_best_PUT(int fd, const std::vector<double>& state_vector,
+                    const std::vector<double>& coeffs) 
+{
+    int k = state_vector.size();
+    int n = coeffs.size();
+    int best_point = 0;
+    double biggest_diff = 0;
+    double best_value = 0;
+    for (int i = 0; i < k; i++) {
+        double sum = get_sum_in_x(i, coeffs);
+        double diff = sum - state_vector[i];
+        if (abs(diff) > biggest_diff) {
+            best_point = i;
+            biggest_diff = abs(diff);
+            if (diff < -5) best_value = -5;
+            else if (diff > 5) best_value = 5;
+            else best_value = diff;
+        }
+    }
+    send_PUT(best_point, best_value, fd);
+}
+
+double get_sum_in_x(int x, const std::vector<double>& coeffs) {
+    double sum = coeffs[0];
+    int exp = 1;
+    for (int i = 1; i < coeffs.size(); i++) {
+        exp *= x;
+        sum += coeffs[i] * exp;
+    }
+    return sum;
 }
