@@ -33,7 +33,9 @@ void send_PUT(int point, double value, int fd) {
     {
         syserr("write()");
     }
-    std::cout << "Putting " << value << " in " << point << ".\n";
+    std::ostringstream formatted_value;
+    formatted_value << std::fixed << std::setprecision(7) << value;
+    std::cout << "Putting " << formatted_value.str() << " in " << point << ".\n";
 }
 
 bool get_input_from_stdin(int& point, double& value) {
@@ -260,12 +262,3 @@ void send_best_PUT(int fd, const std::vector<double>& state_vector,
     send_PUT(best_point, best_value, fd);
 }
 
-double get_sum_in_x(int x, const std::vector<double>& coeffs) {
-    double sum = coeffs[0];
-    int exp = 1;
-    for (int i = 1; i < coeffs.size(); i++) {
-        exp *= x;
-        sum += coeffs[i] * exp;
-    }
-    return sum;
-}

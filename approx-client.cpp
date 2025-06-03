@@ -187,9 +187,8 @@ void input_play(int fd, std::vector <double>& coeffs,
                 if (msg.empty()) continue;
                 if (!handle_message(msg, coeffs, false, state_vector, fd,
                                     pending_puts, exit)) {
-                    fatal("bad message from [%s]:%d, %s: %s", sockaddr_to_ip(ai->ai_addr),
-                           ((struct sockaddr_in*)ai->ai_addr)->sin_port, player_id.c_str(),
-                            msg.c_str());
+                    fatal("bad message from [%s]:%d, UNKNOWN: %s", sockaddr_to_ip(ai->ai_addr),
+                           ((struct sockaddr_in*)ai->ai_addr)->sin_port, msg.c_str());
                 }
             }
         }

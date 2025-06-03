@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include <sys/types.h>
 #include <string>
+#include <vector>
 
 uint16_t read_port(char const *string);
 struct sockaddr_in get_server_address(char const *host, uint16_t port);
@@ -29,5 +30,11 @@ bool is_valid_decimal(const std::string& str);
 
 // Validates player_id - checks if it contains only digits and English letters.
 bool is_valid_player_id(const std::string& player_id);
+
+// Returns the double rounded up to 7 decimal places.
+double round7(double x);
+
+// Calculate the polynomial with coeffs coefficients in point x.
+double get_sum_in_x(int x, const std::vector<double>& coeffs);
 
 #endif

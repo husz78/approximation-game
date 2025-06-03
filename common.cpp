@@ -10,6 +10,7 @@
 #include <unistd.h>
 #include <signal.h>
 #include <arpa/inet.h>
+#include <cmath>
 
 #include "err.h"
 #include "common.h"
@@ -164,4 +165,18 @@ bool is_valid_player_id(const std::string& player_id) {
         }
     }
     return true;
+}
+
+double round7(double x) {
+    return std::round(x * 1e7) / 1e7;
+}
+
+double get_sum_in_x(int x, const std::vector<double>& coeffs) {
+    double sum = coeffs[0];
+    int exp = 1;
+    for (int i = 1; i < coeffs.size(); i++) {
+        exp *= x;
+        sum += coeffs[i] * exp;
+    }
+    return sum;
 }

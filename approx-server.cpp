@@ -2,15 +2,8 @@
 #include <cstdlib>
 #include <iostream>
 #include <string>
-#include <cerrno>
-#include <climits>
-#include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <cstring>
-#include <cstdint>
 #include <fstream>
 
 #include "err.h" 
@@ -71,13 +64,7 @@ void parse_args(int& port, int& K, int& N, int& M, std::string& coeff_file,
         fatal("missing -f parameter");
     }
     
-    // Check if coefficient file exists and is readable.
-    std::ifstream file(coeff_file);
-    if (!file.good()) {
-        usage(argv[0]);
-        fatal("cannot open coefficient file: %s", coeff_file.c_str());
-    }
-    file.close();
+    open_coeff_file(coeff_file);
 }
 
 int main(int argc, char* argv[]) {
@@ -86,6 +73,7 @@ int main(int argc, char* argv[]) {
     int N    = 4;
     int M    = 131;
     std::string coeff_file;
+
 
     parse_args(port, K, N, M, coeff_file, argc, argv);
 
@@ -96,7 +84,7 @@ int main(int argc, char* argv[]) {
               << " file='" << coeff_file << "'\n";
 
     int listen_fd = create_dual_stack(port);
-
+    
 
     close(listen_fd);
     return 0;
