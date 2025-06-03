@@ -7,17 +7,38 @@
 #include <iomanip>
 #include <iostream>
 #include <fstream>
+#include <algorithm>
 
 #include "server-utils.h"
 #include "err.h"
 #include "common.h"
 
+// File stream for the coefficient file.
 static std::ifstream coeffs;
+
+// Comparator function for comparing players (their ids).
+static bool player_comp(const PlayerData& a, const PlayerData& b) {
+    return a.player_id < b.player_id;
+} 
+
+// Calculates the result of the player based on their state and coefficients.
+static void calculate_result(PlayerData& player) {
+    for (int i = 0; i < player.state.size(); i++) {
+        player.result += (player.state[i] - get_sum_in_x(i, player.coeffs)) * 
+                    (player.state[i] - get_sum_in_x(i, player.coeffs));
+    }
+}
 
 void open_coeff_file(const std::string& coeff_file) {
     coeffs.open(coeff_file);
     if (!coeffs.is_open()) {
         fatal("cannot open coefficient file: %s", coeff_file.c_str());
+    }
+}
+
+void close_coeff_file() {
+    if (coeffs.is_open()) {
+        coeffs.close();
     }
 }
 
@@ -65,7 +86,7 @@ int create_dual_stack(int port) {
 
     return listen_fd;
 }
-
+// Send BAD_PUT with point, value to a player via descriptor fd.
 void send_BAD_PUT(int point, double value, int fd, PlayerData& player) {
     player.result += 10;
     std::ostringstream oss;
@@ -82,6 +103,7 @@ void send_BAD_PUT(int point, double value, int fd, PlayerData& player) {
                 << " to " << player.player_id;
 }
 
+// Send PENALTY with point, value to a player via descriptor fd.
 void send_PENALTY(int point, double value, int fd, PlayerData& player) {
     player.result += 20;
     std::ostringstream oss;
@@ -98,6 +120,7 @@ void send_PENALTY(int point, double value, int fd, PlayerData& player) {
                 << " to " << player.player_id;
 }
 
+// Send COEFF via descriptor fd, from the coefficient's file.
 void send_COEFF(int fd, PlayerData& player) {
     std::string line;
     if (!std::getline(coeffs, line)) {
@@ -120,11 +143,14 @@ void send_COEFF(int fd, PlayerData& player) {
     std::cout << ".\n";
 }
 
+// Send SCORING to players via descriptors fds.
 void send_SCORING(const std::vector<int>& fds, std::vector<PlayerData>& players) {
     std::ostringstream oss_msg;
     std::ostringstream oss_output;
     oss_msg << "SCORING";
     oss_output << "Game end, scoring:";
+    std::sort(players.begin(), players.end(), player_comp);
+
     for (int i = 0; i < players.size(); i++) {
         calculate_result(players[i]);
         oss_msg << " " << players[i].player_id << " " << round7(players[i].result);
@@ -141,6 +167,8 @@ void send_SCORING(const std::vector<int>& fds, std::vector<PlayerData>& players)
     std::cout << oss_output.str();
 }
 
+// Send STATE to player via descriptor fd 
+// with a state of the approximation of the player.
 void send_STATE(int fd, PlayerData& player) {
     std::ostringstream oss_msg, oss_output;
     oss_msg << "STATE";
@@ -156,11 +184,4 @@ void send_STATE(int fd, PlayerData& player) {
         syserr("write()");
     }
     std::cout << oss_output.str();
-}
-
-void calculate_result(PlayerData& player) {
-    for (int i = 0; i < player.state.size(); i++) {
-        player.result += (player.state[i] - get_sum_in_x(i, player.coeffs)) * 
-                    (player.state[i] - get_sum_in_x(i, player.coeffs));
-    }
 }
