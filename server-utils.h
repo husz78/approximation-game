@@ -14,7 +14,16 @@ typedef struct {
     std::vector<double> state;
     // The result of the player.
     double result; 
+    // True if after HELLO and false otherwise.
+    bool after_HELLO;
+    // Number of correct PUTs by a player.
+    int PUT_count;
+    // True if a player received an answer to their last PUT.
+    // False otherwise.
+    bool received_PUT_answer;
 } PlayerData;
+
+enum class TimerAction { NONE, SEND_STATE, BAD_PUT };
 
 // Opens the coefficient file and exits with error if it can't be opened.
 void open_coeff_file(const std::string& coeff_file);
@@ -42,5 +51,18 @@ void send_PENALTY(int point, double value, int fd, PlayerData& player);
 // Send BAD_PUT with point, value to a player via descriptor fd.
 void send_BAD_PUT(int point, double value, int fd, PlayerData& player);
 
+// Receives a message from fd into the k-th buffer, returns a line (without \r\n)
+// if available, or empty string if not. If erase is set then server should erase 
+// all the data concerning this player, because they disconnected.
+std::string receive_msg(int fd, int k, bool& erase);
 
-#endif
+// Parses the message msg from the player represented by their descriptor fd.
+// Sends back the necessary replies if necessary or sets the timer for specific
+// type of timer that must be set by the server. Returns true on success and 
+// false if there was an error.
+bool handle_message(const std::string& msg, PlayerData& player, int fd, 
+                    TimerAction& timer, std::string& ip, int port,
+                    int K, int& PUT_count);
+
+
+#endif // SERVER_UTILS_H
