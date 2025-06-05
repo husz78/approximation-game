@@ -28,13 +28,13 @@ static std::vector<Buffer> buffers;
 
 
 // Comparator function for comparing players (their ids).
-static bool player_comp(const PlayerData& a, const PlayerData& b) {
-    return a.player_id < b.player_id;
+static bool player_comp(const PlayerData* a, const PlayerData* b) {
+    return a->player_id < b->player_id;
 } 
 
 // Calculates the result of the player based on their state and coefficients.
 static void calculate_result(PlayerData& player) {
-    for (int i = 0; i < player.state.size(); i++) {
+    for (size_t i = 0; i < player.state.size(); i++) {
         player.result += (player.state[i] - get_sum_in_x(i, player.coeffs)) * 
                     (player.state[i] - get_sum_in_x(i, player.coeffs));
     }
@@ -112,7 +112,7 @@ void send_BAD_PUT(int point, double value, int fd, PlayerData& player) {
     std::ostringstream formatted_value;
     formatted_value << std::fixed << std::setprecision(7) << value;
     std::cout << "Sending BAD_PUT " << point << " " << formatted_value.str() 
-                << " to " << player.player_id;
+                << " to " << player.player_id << ".\n";
 }
 
 // Send PENALTY with point, value to a player via descriptor fd.
@@ -129,7 +129,7 @@ void send_PENALTY(int point, double value, int fd, PlayerData& player) {
     std::ostringstream formatted_value;
     formatted_value << std::fixed << std::setprecision(7) << value;
     std::cout << "Sending PENALTY " << point << " " << formatted_value.str() 
-                << " to " << player.player_id;
+                << " to " << player.player_id << ".\n";
 }
 
 // Send COEFF via descriptor fd, from the coefficient's file.
@@ -145,6 +145,7 @@ void send_COEFF(int fd, PlayerData& player) {
     while (iss >> coeff) {
         player.coeffs.push_back(coeff);
     }
+    line += "\r\n";
     if (writen(fd, line.c_str(), line.size()) != (ssize_t)line.size()) {
         syserr("write()");
     }
@@ -156,18 +157,17 @@ void send_COEFF(int fd, PlayerData& player) {
 }
 
 // Send SCORING to players via descriptors fds.
-void send_SCORING(const std::vector<int>& fds, std::vector<PlayerData>& players) {
+void send_SCORING(const std::vector<int>& fds, std::vector<PlayerData*>& players) {
     std::ostringstream oss_msg;
     std::ostringstream oss_output;
     oss_msg << "SCORING";
     oss_output << "Game end, scoring:";
-    std::vector<PlayerData> copy = players;
-    std::sort(copy.begin(), copy.end(), player_comp);
+    std::sort(players.begin(), players.end(), player_comp);
 
-    for (int i = 0; i < players.size(); i++) {
-        calculate_result(copy[i]);
-        oss_msg << " " << copy[i].player_id << " " << round7(copy[i].result);
-        oss_output << " " << copy[i].player_id << " " << round7(copy[i].result);
+    for (size_t i = 0; i < players.size(); i++) {
+        calculate_result(*players[i]);
+        oss_msg << " " << players[i]->player_id << " " << round7(players[i]->result);
+        oss_output << " " << players[i]->player_id << " " << round7(players[i]->result);
     }
     oss_msg << "\r\n";
     oss_output << ".\n";
@@ -235,26 +235,6 @@ std::string receive_msg(int fd, int k, bool& erase) {
     }
 }
 
-bool handle_message(const std::string& msg, PlayerData& player, int fd, 
-                    TimerAction& timer, const std::string& ip, int port,
-                    int K, int& PUT_count) {
-    std::istringstream iss(msg);
-    std::string command;
-    
-    if (!(iss >> command)) {
-        return false;
-    }
-
-    if (command  == "HELLO") {
-        // return handle_HELLO_message();
-    }
-    else if (command == "PUT") {
-        // return handle_PUT_message();
-    }
-    else return false;
-
-}
-
 bool handle_HELLO_message(std::istringstream& iss, PlayerData& player, int fd,
                             const std::string& ip, int port) {
     if (player.after_HELLO) return false;
@@ -275,15 +255,19 @@ bool handle_PUT_message(std::istringstream& iss, PlayerData& player, int fd,
                         TimerAction& timer, int K, int& PUT_count) {
     if (!player.after_HELLO) return false;
     int point;
+    std::string value_str;
     double value;
-    if (!(iss >> point >> value)) {
+    if (!(iss >> point >> value_str)) {
         return false;
     }
+    if (is_valid_decimal(value_str)) value = std::stod(value_str);
+    else return false;
+
     if (!player.received_PUT_answer || player.coeffs.empty()) {
         send_PENALTY(point, value, fd, player);
     }
     if (player.coeffs.empty()) return true;
-    if (point < 0 || point > K || value < -5 || value > -5) {
+    if (point < 0 || point > K || value < -5 || value > 5) {
         timer = TimerAction::BAD_PUT;
     } else {
         player.PUT_count++;
@@ -293,8 +277,33 @@ bool handle_PUT_message(std::istringstream& iss, PlayerData& player, int fd,
     }
 
     std::cout << player.player_id << " puts " << round7(value) << " in " << 
-                point << ", current state ";
+                point << ", current state";
+
+    for (double val : player.state) {
+        std::cout << " " << round7(val);
+    }
+    std::cout << ".\n";
     return true;
+} 
+
+bool handle_message(const std::string& msg, PlayerData& player, int fd, 
+                    TimerAction& timer, const std::string& ip, int port,
+                    int K, int& PUT_count) {
+    std::istringstream iss(msg);
+    std::string command;
+    
+    if (!(iss >> command)) {
+        return false;
+    }
+
+    if (command  == "HELLO") {
+        return handle_HELLO_message(iss, player, fd, ip, port);
+    }
+    else if (command == "PUT") {
+        return handle_PUT_message(iss, player, fd, timer, K, PUT_count);
+    }
+    else return false;
+
 }
 
 void erase_kth_player(int k) {
@@ -302,7 +311,12 @@ void erase_kth_player(int k) {
         buffers.erase(buffers.begin() + k);
 }
 
+void erase_players() {
+    buffers.clear();
+}
+
 PlayerData add_player() {
     buffers.push_back({});
+    memset(&buffers.back(), 0, sizeof(Buffer));
     return PlayerData{};
 }

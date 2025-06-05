@@ -10,7 +10,7 @@
     va_list fmt_args;
     int org_errno = errno;
 
-    fprintf(stderr, "\tERROR: ");
+    fprintf(stderr, "ERROR: ");
 
     va_start(fmt_args, fmt);
     vfprintf(stderr, fmt, fmt_args);
@@ -23,7 +23,7 @@
 [[noreturn]] void fatal(const char* fmt, ...) {
     va_list fmt_args;
 
-    fprintf(stderr, "\tERROR: ");
+    fprintf(stderr, "ERROR: ");
 
     va_start(fmt_args, fmt);
     vfprintf(stderr, fmt, fmt_args);
@@ -37,7 +37,7 @@ void error(const char* fmt, ...) {
     va_list fmt_args;
     int org_errno = errno;
 
-    fprintf(stderr, "\tERROR: ");
+    fprintf(stderr, "ERROR: ");
 
     va_start(fmt_args, fmt);
     vfprintf(stderr, fmt, fmt_args);

@@ -174,7 +174,7 @@ double round7(double x) {
 double get_sum_in_x(int x, const std::vector<double>& coeffs) {
     double sum = coeffs[0];
     int exp = 1;
-    for (int i = 1; i < coeffs.size(); i++) {
+    for (size_t i = 1; i < coeffs.size(); i++) {
         exp *= x;
         sum += coeffs[i] * exp;
     }

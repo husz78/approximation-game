@@ -40,7 +40,7 @@ int create_dual_stack(int port);
 void send_STATE(int fd, PlayerData& player);
 
 // Send SCORING to players via descriptors fds.
-void send_SCORING(const std::vector<int>& fds, std::vector<PlayerData>& players);
+void send_SCORING(const std::vector<int>& fds, std::vector<PlayerData*>& players);
 
 // Send COEFF via descriptor fd, from the coefficient's file.
 void send_COEFF(int fd, PlayerData& player);
@@ -61,8 +61,16 @@ std::string receive_msg(int fd, int k, bool& erase);
 // type of timer that must be set by the server. Returns true on success and 
 // false if there was an error.
 bool handle_message(const std::string& msg, PlayerData& player, int fd, 
-                    TimerAction& timer, std::string& ip, int port,
+                    TimerAction& timer, const std::string& ip, int port,
                     int K, int& PUT_count);
+
+
+void erase_kth_player(int k);
+
+void erase_players();
+
+
+PlayerData add_player();
 
 
 #endif // SERVER_UTILS_H

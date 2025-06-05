@@ -1,1 +1,4 @@
 .vscode/
+*.o
+approx-server
+approx-client

@@ -20,7 +20,6 @@
 using Clock     = std::chrono::steady_clock;
 using TimePoint = Clock::time_point;
 
-enum class TimerAction { NONE, SEND_STATE, BAD_PUT };
 
 struct Client {
     int            fd;
@@ -167,6 +166,7 @@ int main(int argc, char* argv[]) {
                     } else if (addr.ss_family == AF_INET6) {
                         nc.port = ntohs(((struct sockaddr_in6*)&addr)->sin6_port);
                     }
+                    nc.data = add_player();
                     clients.push_back(nc);
                     pollfds.push_back({new_fd, POLLIN, 0});
                     std::cout << "New client [" << nc.ip << "]:" << nc.port << ".\n";
@@ -174,13 +174,35 @@ int main(int argc, char* argv[]) {
             }
             // Handle existing clients.
             for (size_t i = 1; i < pollfds.size(); ++i) {
+                // Check for game end and if yes then end game
+                // and start a new one.
+                if (PUT_count == M) {
+                    std::vector<int> fds;
+                    std::vector<PlayerData*> players;
+                    for (size_t j = 1; j < pollfds.size(); j++) {
+                        fds.push_back(pollfds[j].fd);
+                        players.push_back(&clients[j - 1].data);
+                        
+                    }
+                    send_SCORING(fds, players);
+                    erase_players();
+                    clients.clear();
+                    for (size_t i = 1; i < pollfds.size(); i++) close(pollfds[i].fd);
+                    pollfds.clear();
+                    pollfds.push_back({listen_fd, POLLIN, 0});
+                    PUT_count = 0;
+                    sleep(1);
+                    break;
+                }
                 if (pollfds[i].revents & POLLIN) {
                     bool erase = false;
                     std::string msg = receive_msg(pollfds[i].fd, i-1, erase);
                     if (erase) {
                         close(pollfds[i].fd);
+                        PUT_count -= clients[i - 1].data.PUT_count;
                         pollfds.erase(pollfds.begin() + i);
                         clients.erase(clients.begin() + (i-1));
+                        erase_kth_player(i - 1);
                         --i;
                         continue;
                     }
@@ -206,10 +228,7 @@ int main(int argc, char* argv[]) {
                             c.action = TimerAction::NONE;
                         }
                     } else {
-                        close(c.fd);
-                        pollfds.erase(pollfds.begin() + i);
-                        clients.erase(clients.begin() + (i-1));
-                        --i;
+                        error("bad message from [%s]:%d, %s: %s", c.ip, c.port, c.data.player_id, msg);
                     }
                 }
             }
