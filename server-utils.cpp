@@ -275,7 +275,7 @@ bool handle_PUT_message(std::istringstream& iss, PlayerData& player, int fd,
         PUT_count++;
         timer = TimerAction::SEND_STATE;
     }
-
+    player.received_PUT_answer = true;
     std::cout << player.player_id << " puts " << round7(value) << " in " << 
                 point << ", current state";
 
@@ -318,5 +318,7 @@ void erase_players() {
 PlayerData add_player() {
     buffers.push_back({});
     memset(&buffers.back(), 0, sizeof(Buffer));
-    return PlayerData{};
+    PlayerData p;
+    p.received_PUT_answer = true;
+    return p;
 }
