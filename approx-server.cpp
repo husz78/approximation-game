@@ -228,7 +228,8 @@ int main(int argc, char* argv[]) {
                             c.action = TimerAction::NONE;
                         }
                     } else {
-                        error("bad message from [%s]:%d, %s: %s", c.ip, c.port, c.data.player_id, msg);
+                        error("bad message from [%s]:%d, %s: %s", c.ip.c_str(), c.port, 
+                                c.data.player_id.c_str(), msg.c_str());
                     }
                 }
             }
