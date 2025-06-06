@@ -328,5 +328,6 @@ PlayerData add_player() {
     memset(&buffers.back(), 0, sizeof(Buffer));
     PlayerData p;
     p.received_PUT_answer = true;
+    p.after_HELLO = false;
     return p;
 }

@@ -206,6 +206,9 @@ int main(int argc, char* argv[]) {
                         --i;
                         continue;
                     }
+                    if (msg.empty()) {
+                        continue;
+                    }
                     Client &c = clients[i-1];
                     TimerAction timer = TimerAction::NONE;
                     if (handle_message(msg, c.data, c.fd, timer, c.ip, c.port, K, PUT_count, N)) {
