@@ -43,7 +43,7 @@ void send_STATE(int fd, PlayerData& player);
 void send_SCORING(const std::vector<int>& fds, std::vector<PlayerData*>& players);
 
 // Send COEFF via descriptor fd, from the coefficient's file.
-void send_COEFF(int fd, PlayerData& player);
+void send_COEFF(int fd, PlayerData& player, int K);
 
 // Send PENALTY with point, value to a player via descriptor fd.
 void send_PENALTY(int point, double value, int fd, PlayerData& player);
@@ -62,7 +62,7 @@ std::string receive_msg(int fd, int k, bool& erase);
 // false if there was an error.
 bool handle_message(const std::string& msg, PlayerData& player, int fd, 
                     TimerAction& timer, const std::string& ip, int port,
-                    int K, int& PUT_count);
+                    int K, int& PUT_count, int N);
 
 
 void erase_kth_player(int k);

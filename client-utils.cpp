@@ -3,6 +3,7 @@
 #include <iostream>
 #include <cstring>
 #include <unistd.h>
+#include <cmath>
 
 #include "client-utils.h"
 #include "common.h"
@@ -19,7 +20,7 @@ int send_HELLO(const std::string& player_id, int fd) {
         syserr("write()");
         return -1;
     }
-    std::cout << "Sending HELLO.\n";
+    std::cout << "Sending HELLO, player id: " << player_id << ".\n";
     return 0;
 }
 
@@ -40,14 +41,20 @@ void send_PUT(int point, double value, int fd) {
 
 bool get_input_from_stdin(int& point, double& value) {
     std::string line;
+    std::string value_str;
     if (!std::getline(std::cin, line)) {
         return false;
     }
     std::istringstream iss(line);
-    if (!(iss >> point >> value)) {
+    if (!(iss >> point >> value_str)) {
         error("invalid input line %s", line.c_str());
         return false;
     }
+    if (!is_valid_decimal(value_str)) {
+        error("invalid input line %s", line.c_str());
+        return false;
+    }
+    value = std::stod(value_str);
     
     std::string remaining;
     if (iss >> remaining) {
@@ -67,9 +74,9 @@ void send_best_PUT(int fd, const std::vector<double>& state_vector,
     for (int i = 0; i < k; i++) {
         double sum = get_sum_in_x(i, coeffs);
         double diff = sum - state_vector[i];
-        if (abs(diff) > biggest_diff) {
+        if (std::abs(diff) > biggest_diff) {
             best_point = i;
-            biggest_diff = abs(diff);
+            biggest_diff = std::abs(diff);
             if (diff < -5) best_value = -5;
             else if (diff > 5) best_value = 5;
             else best_value = diff;
@@ -121,7 +128,7 @@ bool handle_penalty_message(std::istringstream& iss) {
     if (!is_valid_decimal(value_str)) return false;
 
     value = std::stod(value_str);
-    std::cout << "Received penalty for point " << point << " with value " <<
+    std::cout << "Received PENALTY for point " << point << " with value " <<
                  value << ".\n";
     return true;
 }
@@ -136,7 +143,7 @@ bool handle_bad_put_message(std::istringstream& iss, int fd, bool auto_mode,
     if (!is_valid_decimal(value_str)) return false;
     
     value = std::stod(value_str);
-    std::cout << "Received penalty for point " << point << " with value " <<
+    std::cout << "Received BAD_PUT for point " << point << " with value " <<
                  value << ".\n";
     if (auto_mode) send_best_PUT(fd, state_vector, coeffs);
     return true;
@@ -152,23 +159,22 @@ bool handle_coeff_message(std::istringstream& iss, std::vector<double>& coeffs,
     std::string coeff_str;
     double coeff;
     bool ok = true;
-    while (!iss.eof()) {
-        if (!(iss >> coeff_str)) {
-            ok = false;
-            break;
-        }
+    while ((iss >> coeff_str)) {
         if (!is_valid_decimal(coeff_str)) {
+            std::cout << "Invalid decimal number in coeff\n";
             ok = false;
             break;
         }
         coeff = std::stod(coeff_str);
-        if (abs(coeff) > 100) {
+        if (std::abs(coeff) > 100) {
+            std::cout << "Bigger than 100 coeff\n";
             ok = false;
             break;
         }
         coeffs.push_back(coeff);
     }
     if (ok == false || coeffs.size() > 9 || coeffs.size() < 2) {
+        std::cout << "ok: " << ok << "\n";
         coeffs.clear();
         return false;
     }

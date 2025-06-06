@@ -133,7 +133,7 @@ void send_PENALTY(int point, double value, int fd, PlayerData& player) {
 }
 
 // Send COEFF via descriptor fd, from the coefficient's file.
-void send_COEFF(int fd, PlayerData& player) {
+void send_COEFF(int fd, PlayerData& player, int N) {
     std::string line;
     if (!std::getline(coeffs, line)) {
         fatal("Coefficient file exhausted.");
@@ -144,6 +144,9 @@ void send_COEFF(int fd, PlayerData& player) {
     double coeff;
     while (iss >> coeff) {
         player.coeffs.push_back(coeff);
+    }
+    if (player.coeffs.size() != (size_t)N + 1) {
+        fatal("Coefficient file wrong format.");
     }
     line += "\r\n";
     if (writen(fd, line.c_str(), line.size()) != (ssize_t)line.size()) {
@@ -236,7 +239,7 @@ std::string receive_msg(int fd, int k, bool& erase) {
 }
 
 bool handle_HELLO_message(std::istringstream& iss, PlayerData& player, int fd,
-                            const std::string& ip, int port) {
+                            const std::string& ip, int port, int N) {
     if (player.after_HELLO) return false;
     if (!(iss >> player.player_id)) {
         return false;
@@ -247,7 +250,7 @@ bool handle_HELLO_message(std::istringstream& iss, PlayerData& player, int fd,
     player.after_HELLO = true;
 
     std::cout << ip << ":" << port << " is now known as " << player.player_id << ".\n";
-    send_COEFF(fd, player);
+    send_COEFF(fd, player, N);
     return true;
 }
 
@@ -262,20 +265,25 @@ bool handle_PUT_message(std::istringstream& iss, PlayerData& player, int fd,
     }
     if (is_valid_decimal(value_str)) value = std::stod(value_str);
     else return false;
-
+    bool PENALTY_sent = false;
     if (!player.received_PUT_answer || player.coeffs.empty()) {
         send_PENALTY(point, value, fd, player);
+        PENALTY_sent = true;
+        player.received_PUT_answer = true;
     }
     if (player.coeffs.empty()) return true;
     if (point < 0 || point > K || value < -5 || value > 5) {
         timer = TimerAction::BAD_PUT;
     } else {
-        player.PUT_count++;
-        player.state[point] += value;
-        PUT_count++;
-        timer = TimerAction::SEND_STATE;
+        if (!PENALTY_sent) {
+            if (player.state.empty()) player.state.assign(K + 1, 0.0);
+            player.PUT_count++;
+            player.state[point] += value;
+            PUT_count++;
+            timer = TimerAction::SEND_STATE;
+        }
     }
-    player.received_PUT_answer = true;
+    if (!PENALTY_sent) player.received_PUT_answer = false;
     std::cout << player.player_id << " puts " << round7(value) << " in " << 
                 point << ", current state";
 
@@ -288,7 +296,7 @@ bool handle_PUT_message(std::istringstream& iss, PlayerData& player, int fd,
 
 bool handle_message(const std::string& msg, PlayerData& player, int fd, 
                     TimerAction& timer, const std::string& ip, int port,
-                    int K, int& PUT_count) {
+                    int K, int& PUT_count, int N) {
     std::istringstream iss(msg);
     std::string command;
     
@@ -297,7 +305,7 @@ bool handle_message(const std::string& msg, PlayerData& player, int fd,
     }
 
     if (command  == "HELLO") {
-        return handle_HELLO_message(iss, player, fd, ip, port);
+        return handle_HELLO_message(iss, player, fd, ip, port, N);
     }
     else if (command == "PUT") {
         return handle_PUT_message(iss, player, fd, timer, K, PUT_count);

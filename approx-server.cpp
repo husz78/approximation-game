@@ -208,7 +208,7 @@ int main(int argc, char* argv[]) {
                     }
                     Client &c = clients[i-1];
                     TimerAction timer = TimerAction::NONE;
-                    if (handle_message(msg, c.data, c.fd, timer, c.ip, c.port, K, PUT_count)) {
+                    if (handle_message(msg, c.data, c.fd, timer, c.ip, c.port, K, PUT_count, N)) {
                         if (timer == TimerAction::SEND_STATE) {
                             int low = 0;
                             for (char ch : c.data.player_id) {
