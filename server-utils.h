@@ -65,11 +65,13 @@ bool handle_message(const std::string& msg, PlayerData& player, int fd,
                     int K, int& PUT_count, int N);
 
 
+// Removes the buffer associated with the k-th player (used for cleaning up after a disconnect).
 void erase_kth_player(int k);
 
+// Removes all player buffers (used for cleaning up after a game ends).
 void erase_players();
 
-
+// Adds a new player and initializes their buffer; returns a default-initialized PlayerData.
 PlayerData add_player();
 
 

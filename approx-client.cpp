@@ -74,6 +74,8 @@ static void parse_args(int argc, char** argv, std::string& player_id,
     }
 }
 
+// Event loop representing play of the player that sends PUT
+// messages when inputted via STDIN.
 void input_play(int fd, std::vector <double>& coeffs,
                 std::vector <double>& state_vector, struct addrinfo* ai,
                 std::string& player_id) {
@@ -125,6 +127,8 @@ void input_play(int fd, std::vector <double>& coeffs,
     }
 }
 
+// Event loop for a player with auto mode, which is automatic 
+// strategy for sending best PUT messages.
 void auto_play(int fd, std::vector <double>& coeffs,
                 std::vector <double>& state_vector, struct addrinfo* ai,
                 std::string& player_id) 
@@ -170,13 +174,6 @@ int main(int argc, char* argv[]) {
     std::vector <double> state_vector;
 
     parse_args(argc, argv, player_id, server, port, force4, force6, auto_mode);
-
-    std::cout << "player_id=" << player_id
-              << " server="    << server
-              << " port="      << port
-              << " force4="    << force4
-              << " force6="    << force6
-              << " auto="      << auto_mode << "\n";
     
     struct addrinfo hints;
     struct addrinfo *result;

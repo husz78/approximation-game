@@ -64,6 +64,7 @@ bool get_input_from_stdin(int& point, double& value) {
     return true;
 }
 
+// Sends the best PUT message according to an automatic strategy.
 void send_best_PUT(int fd, const std::vector<double>& state_vector,
                     const std::vector<double>& coeffs) 
 {

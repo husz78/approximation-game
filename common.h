@@ -7,12 +7,6 @@
 #include <string>
 #include <vector>
 
-uint16_t read_port(char const *string);
-struct sockaddr_in get_server_address(char const *host, uint16_t port);
-
-// Following two functions come from Stevens' "UNIX Network Programming" book.
-// Read n bytes from a descriptor. Use in place of read() when fd is a stream socket.
-ssize_t	readn(int fd, void *vptr, size_t n);
 
 // Write n bytes to a descriptor.
 ssize_t	writen(int fd, const void *vptr, size_t n);

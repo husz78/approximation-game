@@ -18,12 +18,14 @@
 // File stream for the coefficient file.
 static std::ifstream coeffs;
 
+// Structure representing a buffer for a single client.
 typedef struct {
     char buf[BUF_SIZE];
     size_t start;
     size_t end;
 } Buffer;
 
+// Vector of buffers for every client.
 static std::vector<Buffer> buffers;
 
 

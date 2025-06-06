@@ -20,17 +20,17 @@
 using Clock     = std::chrono::steady_clock;
 using TimePoint = Clock::time_point;
 
-
+// Structure representing client data.
 struct Client {
-    int            fd;
-    PlayerData     data{};
-    TimePoint      hello_deadline;
-    TimePoint      next_action;
-    TimerAction    action = TimerAction::NONE;
-    int            last_bad_point = 0; // for BAD_PUT timer
-    double         last_bad_value = 0.0;
-    std::string    ip;
-    int            port = 0;
+    int fd;                        // Socket file descriptor for this client.
+    PlayerData data{};             // Game-related data for this client (id, state, coeffs, etc.).
+    TimePoint hello_deadline;      // Deadline for receiving HELLO message (for timeout).
+    TimePoint next_action;         // Time when the next timer action should occur.
+    TimerAction action = TimerAction::NONE; // What timer action (if any) is scheduled.
+    int last_bad_point;       // Point index for last BAD_PUT (for delayed response).
+    double last_bad_value;  // Value for last BAD_PUT (for delayed response).
+    std::string ip;                // Client's IP address (for diagnostics).
+    int port;                // Client's port number (for diagnostics).
 };
 
 // Prints the usage of the program.
@@ -98,12 +98,6 @@ int main(int argc, char* argv[]) {
     int PUT_count = 0;
 
     parse_args(port, K, N, M, coeff_file, argc, argv);
-
-    std::cout << "Starting server on port " << port
-              << " with K=" << K
-              << " N=" << N
-              << " M=" << M
-              << " file='" << coeff_file << "'\n";
 
     int listen_fd = create_dual_stack(port);
     // Set listen_fd to non-blocking.
@@ -174,26 +168,6 @@ int main(int argc, char* argv[]) {
             }
             // Handle existing clients.
             for (size_t i = 1; i < pollfds.size(); ++i) {
-                // Check for game end and if yes then end game
-                // and start a new one.
-                if (PUT_count == M) {
-                    std::vector<int> fds;
-                    std::vector<PlayerData*> players;
-                    for (size_t j = 1; j < pollfds.size(); j++) {
-                        fds.push_back(pollfds[j].fd);
-                        players.push_back(&clients[j - 1].data);
-                        
-                    }
-                    send_SCORING(fds, players);
-                    erase_players();
-                    clients.clear();
-                    for (size_t i = 1; i < pollfds.size(); i++) close(pollfds[i].fd);
-                    pollfds.clear();
-                    pollfds.push_back({listen_fd, POLLIN, 0});
-                    PUT_count = 0;
-                    sleep(1);
-                    break;
-                }
                 if (pollfds[i].revents & POLLIN) {
                     bool erase = false;
                     std::string msg = receive_msg(pollfds[i].fd, i-1, erase);
@@ -231,9 +205,30 @@ int main(int argc, char* argv[]) {
                             c.action = TimerAction::NONE;
                         }
                     } else {
+                        if (c.data.player_id.empty()) c.data.player_id = "UNKNOWN";
                         error("bad message from [%s]:%d, %s: %s", c.ip.c_str(), c.port, 
                                 c.data.player_id.c_str(), msg.c_str());
                     }
+                }
+                // Check for game end and if yes then end game
+                // and start a new one.
+                if (PUT_count == M) {
+                    std::vector<int> fds;
+                    std::vector<PlayerData*> players;
+                    for (size_t j = 1; j < pollfds.size(); j++) {
+                        fds.push_back(pollfds[j].fd);
+                        players.push_back(&clients[j - 1].data);
+                        
+                    }
+                    send_SCORING(fds, players);
+                    erase_players();
+                    clients.clear();
+                    for (size_t i = 1; i < pollfds.size(); i++) close(pollfds[i].fd);
+                    pollfds.clear();
+                    pollfds.push_back({listen_fd, POLLIN, 0});
+                    PUT_count = 0;
+                    sleep(1);
+                    break;
                 }
             }
         }
